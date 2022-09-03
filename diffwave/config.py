@@ -5,10 +5,11 @@ import numpy as np
 
 @dataclass
 class DiffWaveConfig:
-    batch_size: int = 2
+    batch_size: int = 16
     learning_rate: float = 2e-4
-    clipnorm = 0.0
-    max_epochs = 100
+    clipnorm = None
+    steps_per_checkpoint = 1000
+    max_steps = 500000
 
     sample_rate = 24000
     n_mels = 80
@@ -21,6 +22,6 @@ class DiffWaveConfig:
     residual_channels = 64
     dilation_cycle_length = 10
     noise_schedule = np.linspace(1e-4, 0.05, 50, dtype=np.float32)
-    inference_noise_schedule = [0.0001, 0.001, 0.01, 0.05, 0.2, 0.5]
+    inference_noise_schedule = [0.001, 0.01, 0.05, 0.2, 0.5]
 
-    max_audio_length = 16000
+    max_audio_length = 8192
