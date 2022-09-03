@@ -1,10 +1,11 @@
 import argparse
+import random
 from pathlib import Path
 
-from diffwave.config import DiffWaveConfig
-from diffwave.dataset import Dataset
-from diffwave.model import TFDiffWave
-from diffwave.trainer import Trainer
+import numpy as np
+import tensorflow as tf
+
+from diffwave import DiffWaveConfig, HDF5Dataset, TFDiffWave, Trainer
 
 
 def main():
@@ -14,25 +15,37 @@ def main():
     parser.add_argument("--log_path", type=Path, help="path to dataset", default="logs")
     args = parser.parse_args()
 
+    initialize(1234)
+
     config = DiffWaveConfig()
     model = TFDiffWave(config)
 
-    dataset = Dataset(args.data_path, config)
+    dataset = HDF5Dataset(args.data_path, config)
+    dataset.load()
 
-    trainer = Trainer(
-        name=args.name,
-        config=config,
-        model=model,
-        dataset=dataset,
-        log_path=args.log_path,
-    )
-    epoch = 0
-    while epoch < config.max_epochs:
+    log_path = args.log_path / args.name
+    log_path.mkdir(exist_ok=True)
+
+    trainer = Trainer(config=config, model=model, dataset=dataset, log_path=log_path)
+
+    while trainer.step < config.max_steps:
 
         trainer.train()
+        trainer.validate()
         trainer.test()
 
-        epoch += 1
+
+def initialize(seed: int = 1234) -> None:
+
+    try:
+        for d in tf.config.list_physical_devices("GPU"):
+            tf.config.experimental.set_memory_growth(d, True)
+    except RuntimeError:
+        pass
+
+    random.seed(seed)
+    tf.random.set_seed(seed)
+    np.random.seed(seed)
 
 
 if __name__ == "__main__":
