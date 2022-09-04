@@ -1,4 +1,5 @@
 """Simple dataset."""
+import logging
 from pathlib import Path
 from random import shuffle
 from typing import NamedTuple
@@ -10,6 +11,8 @@ import tensorflow as tf
 
 from diffwave.config import DiffWaveConfig
 from diffwave.typing import TensorLike
+
+LOGGER = logging.getLogger(__name__)
 
 
 class Sample(NamedTuple):
@@ -38,9 +41,9 @@ class Dataset:
         self._val_samples = split[self._config.batch_size :]
         self._test_samples = split[: self._config.batch_size]
 
-        print(f"Train Files: {len(self._train_samples)}")
-        print(f"Validation Files: {len(self._val_samples)}")
-        print(f"Test Files: {len(self._test_samples)}")
+        LOGGER.info(f"Train Files: {len(self._train_samples)}")
+        LOGGER.info(f"Validation Files: {len(self._val_samples)}")
+        LOGGER.info(f"Test Files: {len(self._test_samples)}")
 
         self._train = self._load_dataset(self._train_samples, slice=True)
         self._val = self._load_dataset(self._val_samples, slice=True)
@@ -146,9 +149,9 @@ class HDF5Dataset(Dataset):
         self._val_samples = split[self._config.batch_size :]
         self._test_samples = split[: self._config.batch_size]
 
-        print(f"Train Files: {len(self._train_samples)}")
-        print(f"Validation Files: {len(self._val_samples)}")
-        print(f"Test Files: {len(self._test_samples)}")
+        LOGGER.info(f"Train Files: {len(self._train_samples)}")
+        LOGGER.info(f"Validation Files: {len(self._val_samples)}")
+        LOGGER.info(f"Test Files: {len(self._test_samples)}")
 
         self._train = self._load_dataset(self._train_samples, slice=True)
         self._val = self._load_dataset(self._val_samples, slice=True)

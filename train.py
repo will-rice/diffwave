@@ -1,3 +1,4 @@
+"""Train script."""
 import argparse
 import random
 from pathlib import Path
@@ -9,6 +10,7 @@ from diffwave import DiffWaveConfig, HDF5Dataset, TFDiffWave, Trainer
 
 
 def main():
+    """Main entry."""
     parser = argparse.ArgumentParser(description="Model Training")
     parser.add_argument("name", help="name for run")
     parser.add_argument("data_path", type=Path, help="path to dataset")
@@ -36,6 +38,7 @@ def main():
 
 
 def initialize(seed: int = 1234) -> None:
+    """Set memory growth and seeds."""
 
     try:
         for d in tf.config.list_physical_devices("GPU"):
