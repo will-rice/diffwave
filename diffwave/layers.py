@@ -1,3 +1,6 @@
+"""Model layers."""
+from typing import Any, Optional, Tuple
+
 import tensorflow as tf
 from keras import layers
 
@@ -38,7 +41,8 @@ class Conv1D(layers.Conv1D):
         else:
             self.explicit_padding = None
 
-    def call(self, inputs):
+    def call(self, inputs: tf.Tensor) -> tf.Tensor:
+        """Forward Pass."""
 
         if self.explicit_padding:
 
@@ -51,16 +55,28 @@ class Conv1D(layers.Conv1D):
 
 
 class SiLU(layers.Layer):
-    def call(self, inputs, mask=None, training=False):
+    """SiLU Activation."""
+
+    def call(
+        self,
+        inputs: tf.Tensor,
+        mask: Optional[tf.Tensor] = None,
+        training: bool = False,
+    ) -> tf.Tensor:
+        """Forward Pass."""
         return inputs * tf.nn.sigmoid(inputs)
 
 
 class TFSinusoidalPositionEmbeddings(layers.Layer):
-    def __init__(self, max_steps, **kwargs):
+    """Timestep embeddings."""
+
+    def __init__(self, max_steps: int, **kwargs: Any):
         super().__init__(**kwargs)
         self.max_steps = max_steps
+        self.embeddings = None
 
     def build(self, input_shape):
+        """Build embeddings."""
         time = tf.range(self.max_steps)
         half_dim = self.max_steps // 2
         embeddings = tf.math.log(10000.0) / (half_dim - 1)
@@ -73,29 +89,37 @@ class TFSinusoidalPositionEmbeddings(layers.Layer):
         )
         self.embeddings = tf.Variable(embeddings)
 
-    def call(self, time):
+    def call(
+        self, time: tf.Tensor, mask: Optional[tf.Tensor] = None, training: bool = False
+    ):
+        """Forward Pass."""
         return tf.gather(self.embeddings, time)
 
 
 class TFDiffusionEmbedding(layers.Layer):
-    def __init__(self, max_steps, **kwargs):
+    """Diffusion Embedding Layer."""
+
+    def __init__(self, max_steps: int, units: int = 512, **kwargs: Any):
         super().__init__(**kwargs)
         self.max_steps = max_steps
         self.time_embed = TFSinusoidalPositionEmbeddings(max_steps)
-        self.projection_1 = layers.Dense(512)
+        self.projection_1 = layers.Dense(units)
         self.activation_1 = SiLU()
-        self.projection_2 = layers.Dense(512)
+        self.projection_2 = layers.Dense(units)
         self.activation_2 = SiLU()
 
-    def lerp(self, step):
+    def lerp(self, step) -> tf.Tensor:
+        """Interpolate step floor and ceiling."""
         low_idx = tf.math.floor(step)
         high_idx = tf.math.ceil(step)
         low = self.time_embed(tf.cast(low_idx, tf.int32))
         high = self.time_embed(tf.cast(high_idx, tf.int32))
         return low + (high - low) * (step - low_idx)
 
-    def call(self, step, training=False, mask=None):
-
+    def call(
+        self, step: tf.Tensor, training: bool = False, mask: Optional[tf.Tensor] = None
+    ) -> tf.Tensor:
+        """Forward Pass."""
         if training:
             step = tf.cast(step, tf.int32)
             out = self.time_embed(step)
@@ -111,18 +135,33 @@ class TFDiffusionEmbedding(layers.Layer):
 
 
 class TFSpectrogramUpsampler(layers.Layer):
-    def __init__(self, n_mels, **kwargs):
+    """Upsample layer for conditional input."""
+
+    def __init__(
+        self,
+        kernel_size: Tuple[int] = (32, 3),
+        strides: Tuple[int] = (16, 1),
+        padding: str = "same",
+        leaky_relu_alpha: float = 0.4,
+        **kwargs: Any,
+    ):
         super().__init__(**kwargs)
         self.conv_1 = layers.Conv2DTranspose(
-            1, kernel_size=(32, 3), strides=(16, 1), padding="same"
+            1, kernel_size=kernel_size, strides=strides, padding=padding
         )
-        self.activation_1 = layers.LeakyReLU(0.4)
+        self.activation_1 = layers.LeakyReLU(leaky_relu_alpha)
         self.conv_2 = layers.Conv2DTranspose(
-            1, kernel_size=(32, 3), strides=(16, 1), padding="same"
+            1, kernel_size=kernel_size, strides=strides, padding=padding
         )
-        self.activation_2 = layers.LeakyReLU(0.4)
+        self.activation_2 = layers.LeakyReLU(leaky_relu_alpha)
 
-    def call(self, inputs):
+    def call(
+        self,
+        inputs: tf.Tensor,
+        mask: Optional[tf.Tensor] = None,
+        training: bool = False,
+    ) -> tf.Tensor:
+        """Forward Pass."""
         out = tf.expand_dims(inputs, -1)
         out = self.conv_1(out)
         out = self.activation_1(out)
@@ -133,7 +172,9 @@ class TFSpectrogramUpsampler(layers.Layer):
 
 
 class TFResidualBlock(layers.Layer):
-    def __init__(self, residual_channels, dilation_rate, **kwargs):
+    """Residual Block."""
+
+    def __init__(self, residual_channels: int, dilation_rate: int, **kwargs: Any):
         super().__init__(**kwargs)
         self.dilated_conv = Conv1D(
             2 * residual_channels,
@@ -145,7 +186,13 @@ class TFResidualBlock(layers.Layer):
         self.cond_proj = Conv1D(2 * residual_channels, kernel_size=1)
         self.out_proj = Conv1D(2 * residual_channels, kernel_size=1)
 
-    def call(self, inputs, diff_step, cond=None):
+    def call(
+        self,
+        inputs: tf.Tensor,
+        diff_step: tf.Tensor,
+        cond: Optional[tf.Tensor] = None,
+    ) -> Tuple[tf.Tensor, tf.Tensor]:
+        """Forward Pass."""
         diff_step = self.diff_proj(diff_step)
         out = inputs + diff_step
         out = self.dilated_conv(out)

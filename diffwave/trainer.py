@@ -1,13 +1,28 @@
 """Simple trainer."""
+import logging
+from pathlib import Path
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 import wandb
 from tqdm.auto import tqdm
 
+from diffwave import Dataset, DiffWaveConfig
+
+LOGGER = logging.getLogger(__name__)
+
 
 class Trainer:
-    def __init__(self, config, model, dataset, log_path):
+    """Simple Trainer."""
+
+    def __init__(
+        self,
+        config: DiffWaveConfig,
+        model: tf.keras.Model,
+        dataset: Dataset,
+        log_path: Path,
+    ):
         self._config = config
         self._model = model
         self._dataset = dataset
@@ -40,11 +55,12 @@ class Trainer:
         )
         self._ckpt.restore(self._ckpt_manager.latest_checkpoint)
         if self._ckpt_manager.latest_checkpoint:
-            print("Restored from {}".format(self._ckpt_manager.latest_checkpoint))
+            LOGGER.info("Restored from {}".format(self._ckpt_manager.latest_checkpoint))
         else:
-            print("Initializing from scratch.")
+            LOGGER.info("Initializing from scratch.")
 
     def train(self):
+        """Train run."""
         with tqdm(total=self._config.steps_per_checkpoint) as pbar:
 
             for i, batch in enumerate(
@@ -93,6 +109,7 @@ class Trainer:
                 self._ckpt.step.assign_add(1)
 
     def validate(self):
+        """Validate run."""
 
         with tqdm(total=self._dataset.num_val_steps) as pbar:
 
@@ -127,6 +144,7 @@ class Trainer:
             wandb.log(results)
 
     def test(self):
+        """Test run."""
 
         training_noise_schedule = np.array(self._config.noise_schedule)
         inference_noise_schedule = np.array(self._config.inference_noise_schedule)
@@ -191,13 +209,15 @@ class Trainer:
                 pbar.update(i - pbar.n)
 
         save_path = self._ckpt_manager.save()
-        print(f"Saved checkpoint for step {int(self._ckpt.step)}: {save_path}")
+        LOGGER.info(f"Saved checkpoint for step {int(self._ckpt.step)}: {save_path}")
         self._model.save_weights(str(self._log_path))
 
     @property
     def model(self):
+        """Current model."""
         return self._model
 
     @property
     def step(self):
+        """Global step."""
         return int(self._ckpt.step)

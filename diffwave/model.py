@@ -1,5 +1,9 @@
+"""Model."""
+from typing import Optional
+
 import tensorflow as tf
 
+from diffwave import DiffWaveConfig
 from diffwave.layers import (
     Conv1D,
     TFDiffusionEmbedding,
@@ -9,7 +13,9 @@ from diffwave.layers import (
 
 
 class TFDiffWave(tf.keras.Model):
-    def __init__(self, config):
+    """TFDiffWave Model."""
+
+    def __init__(self, config: DiffWaveConfig):
         super().__init__()
         self._config = config
 
@@ -25,7 +31,10 @@ class TFDiffWave(tf.keras.Model):
         self.skip_proj = Conv1D(config.residual_channels, 1, activation="relu")
         self.out_proj = Conv1D(1, 1, kernel_initializer="zeros")
 
-    def call(self, inputs, diff_step, cond=None):
+    def call(
+        self, inputs: tf.Tensor, diff_step: tf.Tensor, cond: Optional[tf.Tensor] = None
+    ) -> tf.Tensor:
+        """Forward Pass."""
         out = inputs[..., tf.newaxis]
         out = self.input_proj(out)
 
