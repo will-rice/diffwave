@@ -9,7 +9,7 @@ import tensorflow as tf
 from diffwave import DiffWaveConfig, HDF5Dataset, TFDiffWave, Trainer
 
 
-def main():
+def main() -> None:
     """Main entry."""
     parser = argparse.ArgumentParser(description="Model Training")
     parser.add_argument("name", help="name for run")

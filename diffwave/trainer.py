@@ -1,6 +1,7 @@
 """Simple trainer."""
 import logging
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
@@ -22,7 +23,7 @@ class Trainer:
         model: tf.keras.Model,
         dataset: Dataset,
         log_path: Path,
-    ):
+    ) -> None:
         self._config = config
         self._model = model
         self._dataset = dataset
@@ -41,7 +42,7 @@ class Trainer:
         self.noise_level = tf.convert_to_tensor(noise_level.astype(np.float32))
 
         wandb.init(
-            project=f"diffwave",
+            project="diffwave",
             id=log_path.stem,
             name=log_path.stem,
             dir=str(log_path),
@@ -59,7 +60,7 @@ class Trainer:
         else:
             LOGGER.info("Initializing from scratch.")
 
-    def train(self):
+    def train(self) -> None:
         """Train run."""
         with tqdm(total=self._config.steps_per_checkpoint) as pbar:
 
@@ -108,7 +109,7 @@ class Trainer:
 
                 self._ckpt.step.assign_add(1)
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate run."""
 
         with tqdm(total=self._dataset.num_val_steps) as pbar:
@@ -143,7 +144,7 @@ class Trainer:
             results = dict(val_loss=self._val_loss.result().numpy())
             wandb.log(results)
 
-    def test(self):
+    def test(self) -> None:
         """Test run."""
 
         training_noise_schedule = np.array(self._config.noise_schedule)
@@ -157,7 +158,7 @@ class Trainer:
         alpha_cum = np.cumprod(alpha)
 
         # TODO: figure out this mess
-        T = []
+        T: Any = []
         for s in range(len(inference_noise_schedule)):
             for t in range(len(training_noise_schedule) - 1):
                 if talpha_cum[t + 1] <= alpha_cum[s] <= talpha_cum[t]:
@@ -176,7 +177,6 @@ class Trainer:
                 audio = tf.random.normal(
                     (input_shape[0], self._config.hop_length * input_shape[1])
                 )
-                noise_scale = tf.expand_dims(alpha_cum**0.5, 1)
 
                 for n in range(len(alpha) - 1, -1, -1):
                     c1 = 1 / alpha[n] ** 0.5
@@ -213,11 +213,11 @@ class Trainer:
         self._model.save_weights(str(self._log_path))
 
     @property
-    def model(self):
+    def model(self) -> tf.keras.Model:
         """Current model."""
         return self._model
 
     @property
-    def step(self):
+    def step(self) -> int:
         """Global step."""
         return int(self._ckpt.step)

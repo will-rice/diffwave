@@ -2,7 +2,7 @@
 import logging
 from pathlib import Path
 from random import shuffle
-from typing import NamedTuple
+from typing import Any, Generator, NamedTuple
 
 import h5py
 import librosa
@@ -16,6 +16,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Sample(NamedTuple):
+    """Training Sample"""
+
     audio: TensorLike
     audio_lengths: TensorLike
     mel_spectrogram: TensorLike
@@ -23,13 +25,19 @@ class Sample(NamedTuple):
 
 
 class Dataset:
-    def __init__(self, path: Path, config: DiffWaveConfig):
+    """Simple dataset."""
+
+    def __init__(self, path: Path, config: DiffWaveConfig) -> None:
         self._path = path
         self._config = config
-        self._train, self._val, self._test = None, None, None
-        self._train_samples, self._val_samples, self._test_samples = None, None, None
+        self._train: Any = []
+        self._val: Any = []
+        self._test: Any = []
+        self._train_samples: Any = []
+        self._val_samples: Any = []
+        self._test_samples: Any = []
 
-    def load(self):
+    def load(self) -> None:
 
         with open(self._path / "metadata.csv") as file:
             lines = [f.strip() for f in file.readlines()]
@@ -49,7 +57,7 @@ class Dataset:
         self._val = self._load_dataset(self._val_samples, slice=True)
         self._test = self._load_dataset(self._test_samples)
 
-    def _load_dataset(self, samples, slice=False) -> tf.data.Dataset:
+    def _load_dataset(self, samples: Any, slice: bool = False) -> tf.data.Dataset:
         return (
             tf.data.Dataset.from_generator(
                 lambda: self._generate(samples, slice=slice),
@@ -74,7 +82,9 @@ class Dataset:
             .prefetch(tf.data.AUTOTUNE)
         )
 
-    def _generate(self, samples, slice=False) -> Sample:
+    def _generate(
+        self, samples: Any, slice: bool = False
+    ) -> Generator[Sample, None, None]:
         """Generate a single batch from a collection of samples."""
         for sample in samples:
             filename, _, cleaned = sample.split("|")
@@ -86,7 +96,7 @@ class Dataset:
 
             if slice:
                 # random sample 1 sec chunks when training
-                start = np.random.randint(
+                start: Any = np.random.randint(
                     0, len(audio) - self._config.max_audio_length, size=()
                 )
                 audio = audio[start : start + self._config.max_audio_length]
@@ -136,10 +146,12 @@ class Dataset:
 
 
 class HDF5Dataset(Dataset):
-    def __init__(self, path, config):
+    """HDF5Dataset for faster training."""
+
+    def __init__(self, path: Path, config: DiffWaveConfig) -> None:
         super().__init__(path, config)
 
-    def load(self):
+    def load(self) -> None:
         data_file = h5py.File(self._path, "r")
         samples = list(data_file.values())
         shuffle(samples)
@@ -157,7 +169,9 @@ class HDF5Dataset(Dataset):
         self._val = self._load_dataset(self._val_samples, slice=True)
         self._test = self._load_dataset(self._test_samples)
 
-    def _generate(self, samples, slice=False) -> Sample:
+    def _generate(
+        self, samples: Any, slice: bool = False
+    ) -> Generator[Sample, None, None]:
         for sample in samples:
             audio = sample["audio"][:]
             audio = audio.astype(np.float32) / (2**15 - 1)
@@ -170,7 +184,7 @@ class HDF5Dataset(Dataset):
 
             if slice:
                 # random sample 1 sec chunks when training
-                start = np.random.randint(
+                start: Any = np.random.randint(
                     0, audio_length - self._config.max_audio_length, size=()
                 )
                 audio = audio[start : start + self._config.max_audio_length]
@@ -179,7 +193,7 @@ class HDF5Dataset(Dataset):
                     audio_length - self._config.max_audio_length
                 ) // self._config.hop_length
 
-                mel_start = start // self._config.hop_length
+                mel_start: Any = start // self._config.hop_length
                 mel_spectrogram = mel_spectrogram[
                     mel_start : mel_start + max_mel_length
                 ]
