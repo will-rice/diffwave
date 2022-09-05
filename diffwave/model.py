@@ -21,7 +21,7 @@ class TFDiffWave(tf.keras.Model):
 
         self.input_proj = Conv1D(config.residual_channels, 1, activation="relu")
         self.diff_embed = TFDiffusionEmbedding(128)
-        self.spec_upsample = TFSpectrogramUpsampler(config.n_mels)
+        self.spec_upsample = TFSpectrogramUpsampler()
         self.res_layers = [
             TFResidualBlock(
                 config.residual_channels, 2 ** (i % config.dilation_cycle_length)
@@ -43,13 +43,12 @@ class TFDiffWave(tf.keras.Model):
         if cond is not None:
             cond = self.spec_upsample(cond)[:, : tf.shape(out)[1], :]
 
+        skip = 0.0
         for i, layer in enumerate(self.res_layers):
             out, skip = layer(out, diff_step, cond)
+            skip += skip
 
-            if i > 0:
-                skip += skip
-
-        out = skip / tf.sqrt(float(len(self.res_layers)))
+        out = skip * tf.sqrt(self._config.skip_scale)
         out = self.skip_proj(out)
         out = self.out_proj(out)
         return out

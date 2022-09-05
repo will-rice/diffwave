@@ -1,3 +1,7 @@
 pip-tools
 isort
 black
+pre-commit
+mypy
+flake8
+pytest

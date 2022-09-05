@@ -1,5 +1,5 @@
 """Model layers."""
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, Union
 
 import tensorflow as tf
 from keras import layers
@@ -10,17 +10,19 @@ class Conv1D(layers.Conv1D):
 
     def __init__(
         self,
-        filters,
-        kernel_size,
-        padding=0,
-        strides=1,
-        dilation_rate=1,
-        kernel_initializer=tf.keras.initializers.VarianceScaling(
+        filters: int,
+        kernel_size: int,
+        padding: Union[int, str, tuple, None] = "valid",
+        strides: int = 1,
+        dilation_rate: int = 1,
+        kernel_initializer: Union[
+            tf.keras.initializer, str
+        ] = tf.keras.initializers.VarianceScaling(
             scale=1 / 3, mode="fan_in", distribution="uniform"
         ),
-        bias_initializer="zeros",
-        data_format="channels_last",
-        **kwargs,
+        bias_initializer: Union[tf.keras.initializer, str] = "zeros",
+        data_format: str = "channels_last",
+        **kwargs: Any,
     ):
         super().__init__(
             filters=filters,
@@ -35,7 +37,7 @@ class Conv1D(layers.Conv1D):
         )
 
         if isinstance(padding, tuple):
-            self.explicit_padding = padding
+            self.explicit_padding: Union[tuple, None] = padding
         elif isinstance(padding, int):
             self.explicit_padding = (padding, padding)
         else:
@@ -75,7 +77,7 @@ class TFSinusoidalPositionEmbeddings(layers.Layer):
         self.max_steps = max_steps
         self.embeddings = None
 
-    def build(self, input_shape):
+    def build(self, input_shape: tf.TensorShape) -> None:
         """Build embeddings."""
         time = tf.range(self.max_steps)
         half_dim = self.max_steps // 2
@@ -91,7 +93,7 @@ class TFSinusoidalPositionEmbeddings(layers.Layer):
 
     def call(
         self, time: tf.Tensor, mask: Optional[tf.Tensor] = None, training: bool = False
-    ):
+    ) -> tf.Tensor:
         """Forward Pass."""
         return tf.gather(self.embeddings, time)
 
@@ -108,7 +110,7 @@ class TFDiffusionEmbedding(layers.Layer):
         self.projection_2 = layers.Dense(units)
         self.activation_2 = SiLU()
 
-    def lerp(self, step) -> tf.Tensor:
+    def lerp(self, step: tf.Tensor) -> tf.Tensor:
         """Interpolate step floor and ceiling."""
         low_idx = tf.math.floor(step)
         high_idx = tf.math.ceil(step)
@@ -139,8 +141,8 @@ class TFSpectrogramUpsampler(layers.Layer):
 
     def __init__(
         self,
-        kernel_size: Tuple[int] = (32, 3),
-        strides: Tuple[int] = (16, 1),
+        kernel_size: Tuple[int, int] = (32, 3),
+        strides: Tuple[int, int] = (16, 1),
         padding: str = "same",
         leaky_relu_alpha: float = 0.4,
         **kwargs: Any,
