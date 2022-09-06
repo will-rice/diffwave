@@ -16,11 +16,11 @@ class Conv1D(layers.Conv1D):
         strides: int = 1,
         dilation_rate: int = 1,
         kernel_initializer: Union[
-            tf.keras.initializer, str
+            tf.keras.initializers.Initializer, str
         ] = tf.keras.initializers.VarianceScaling(
             scale=1 / 3, mode="fan_in", distribution="uniform"
         ),
-        bias_initializer: Union[tf.keras.initializer, str] = "zeros",
+        bias_initializer: Union[tf.keras.initializers.Initializer, str] = "zeros",
         data_format: str = "channels_last",
         **kwargs: Any,
     ):
